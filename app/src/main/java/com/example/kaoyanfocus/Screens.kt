@@ -730,6 +730,7 @@ private fun PetFeedingSection(state: PetState, motion: PetMotionUi, vm: FocusVie
         cameraUri = uri; cameraLauncher.launch(uri)
     }
     val todayFed = records.count { it.status == "FED" && it.feedDate == Dates.today() }
+    val cottonCandyFedToday = records.any { it.status == "FED" && it.feedDate == Dates.today() && it.sourceType == "CINNAMOROLL_TREAT" }
     val lastFedAt = records.filter { it.status == "FED" }.maxOfOrNull { it.fedAt ?: 0L } ?: 0L
     val waitMillis = (2 * 60 * 60 * 1000L - (System.currentTimeMillis() - lastFedAt)).coerceAtLeast(0L)
     val canFeed = todayFed < 3 && waitMillis == 0L
@@ -770,7 +771,7 @@ private fun PetFeedingSection(state: PetState, motion: PetMotionUi, vm: FocusVie
                         Text("大耳狗的云朵棉花糖", fontWeight = FontWeight.Bold, color = Color(0xFF356FA8))
                         Text("主题限定 · 喂食后会出现甜甜的特效", style = MaterialTheme.typography.bodySmall, color = Color(0xFF5D86B4))
                     }
-                    Button({ vm.feedCinnamorollCottonCandy() }, enabled = canFeed) { Text("送给它") }
+                    Button({ vm.feedCinnamorollCottonCandy() }, enabled = canFeed && !cottonCandyFedToday) { Text(if (cottonCandyFedToday) "明日再送" else "送给它") }
                 }
             }
         }
