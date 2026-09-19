@@ -572,6 +572,7 @@ private fun AchievementSection(vm: FocusViewModel) {
 private fun PetSection(vm: FocusViewModel) {
     val state by vm.petState.collectAsState()
     val motion by vm.petMotion.collectAsState()
+    val activeTheme by vm.adminState.collectAsState()
     val context = LocalContext.current
     var area by remember { mutableIntStateOf(0) }
     var naming by remember { mutableStateOf(false) }
@@ -673,7 +674,7 @@ private fun PetSection(vm: FocusViewModel) {
                 }
                 item { OutlinedButton({ petName = state.profile?.name.orEmpty(); naming = true }) { Icon(Icons.Default.Edit, null); Spacer(Modifier.width(6.dp)); Text("免费改名") } }
             }
-            1 -> PetFeedingSection(state, motion, vm)
+            1 -> PetFeedingSection(state, motion, vm, activeTheme.activeTheme)
             2 -> PetWardrobe(state, vm)
             3 -> LazyColumn(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (state.letters.isEmpty()) item { Text("还没有收到来信", color = MaterialTheme.colorScheme.onSurfaceVariant) }
@@ -702,7 +703,7 @@ private fun PetSection(vm: FocusViewModel) {
 }
 
 @Composable
-private fun PetFeedingSection(state: PetState, motion: PetMotionUi, vm: FocusViewModel) {
+private fun PetFeedingSection(state: PetState, motion: PetMotionUi, vm: FocusViewModel, activeTheme: String) {
     val context = LocalContext.current
     val records by vm.foodRecords.collectAsState()
     val affection by vm.petAffection.collectAsState()
@@ -710,6 +711,7 @@ private fun PetFeedingSection(state: PetState, motion: PetMotionUi, vm: FocusVie
     val pending by vm.pendingFood.collectAsState()
     val loading by vm.foodLoading.collectAsState()
     val notice by vm.foodNotice.collectAsState()
+    val cottonCandyToken by vm.cottonCandyEffectToken.collectAsState()
     var cameraUri by remember { mutableStateOf<Uri?>(null) }
     var selectedKey by remember(pending) { mutableStateOf(pending?.result?.key.orEmpty()) }
     var showCatalog by remember { mutableStateOf(false) }
@@ -728,6 +730,9 @@ private fun PetFeedingSection(state: PetState, motion: PetMotionUi, vm: FocusVie
         cameraUri = uri; cameraLauncher.launch(uri)
     }
     val todayFed = records.count { it.status == "FED" && it.feedDate == Dates.today() }
+    val lastFedAt = records.filter { it.status == "FED" }.maxOfOrNull { it.fedAt ?: 0L } ?: 0L
+    val waitMillis = (2 * 60 * 60 * 1000L - (System.currentTimeMillis() - lastFedAt)).coerceAtLeast(0L)
+    val canFeed = todayFed < 3 && waitMillis == 0L
 
     LazyColumn(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
@@ -737,6 +742,7 @@ private fun PetFeedingSection(state: PetState, motion: PetMotionUi, vm: FocusVie
                         state.profile?.let { profile ->
                             PolishedPetFurniture(profile)
                             AnimatedPet(profile, state.unlocks, motion, false, Modifier.fillMaxSize(), vm::petTapped)
+                            CottonCandyCelebration(cottonCandyToken)
                         }
                     }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
@@ -744,6 +750,7 @@ private fun PetFeedingSection(state: PetState, motion: PetMotionUi, vm: FocusVie
                         Column(horizontalAlignment = Alignment.CenterHorizontally) { Text("$todayFed / 3", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary); Text("今日喂食", style = MaterialTheme.typography.labelSmall) }
                         Column(horizontalAlignment = Alignment.CenterHorizontally) { Text("$recognitionCount / 10", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary); Text("今日识别", style = MaterialTheme.typography.labelSmall) }
                     }
+                    if (waitMillis > 0) Text("消化中：${formatFeedingWait(waitMillis)}后可再进食", Modifier.padding(top = 8.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -754,6 +761,18 @@ private fun PetFeedingSection(state: PetState, motion: PetMotionUi, vm: FocusVie
             }
             if (loading) { Spacer(Modifier.height(8.dp)); LinearProgressIndicator(Modifier.fillMaxWidth()); Text("正在压缩并识别食物…", style = MaterialTheme.typography.bodySmall) }
             notice?.let { Text(it, Modifier.padding(top = 8.dp), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall) }
+        }
+        if (activeTheme == ThemeCatalog.CINNAMOROLL) item {
+            ElevatedCard(Modifier.fillMaxWidth(), colors = CardDefaults.elevatedCardColors(containerColor = Color(0xFFEAF6FF))) {
+                Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    FoodArtwork(foodArtworkResource("cotton_candy")!!, Modifier.size(58.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("大耳狗的云朵棉花糖", fontWeight = FontWeight.Bold, color = Color(0xFF356FA8))
+                        Text("主题限定 · 喂食后会出现甜甜的特效", style = MaterialTheme.typography.bodySmall, color = Color(0xFF5D86B4))
+                    }
+                    Button({ vm.feedCinnamorollCottonCandy() }, enabled = canFeed) { Text("送给它") }
+                }
+            }
         }
         pending?.let { item {
             ElevatedCard(Modifier.fillMaxWidth()) { Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
@@ -779,11 +798,17 @@ private fun PetFeedingSection(state: PetState, motion: PetMotionUi, vm: FocusVie
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         items(result.candidates.take(4), key = { it }) { key -> FilterChip(selectedKey == key, { selectedKey = key }, label = { Text(FoodCatalog.find(key).name) }) }
                     }
+                    Text(
+                        if (selectedKey == result.key) "识别结果对吗？确认后会记录“识别正确”反馈。"
+                        else "已选择“${FoodCatalog.find(selectedKey).name}”：确认后会记录纠正反馈，帮助你回看常见误判。",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 } else Text(it.fallbackReason ?: "请选择食物", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 OutlinedButton({ showCatalog = true }, Modifier.fillMaxWidth()) { Icon(Icons.Default.RestaurantMenu, null); Spacer(Modifier.width(6.dp)); Text(if (selectedKey.isBlank()) "从食物目录选择" else "已选择：${FoodCatalog.find(selectedKey).name}") }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton(vm::cancelPendingFood, Modifier.weight(1f)) { Text("取消") }
-                    Button({ vm.confirmFood(selectedKey) }, Modifier.weight(1f), enabled = selectedKey.isNotBlank()) { Text("确认保存") }
+                    Button({ vm.confirmFood(selectedKey) }, Modifier.weight(1f), enabled = selectedKey.isNotBlank()) { Text(if (result == null) "确认保存" else "确认并反馈") }
                 }
             } }
         } }
@@ -802,7 +827,7 @@ private fun PetFeedingSection(state: PetState, motion: PetMotionUi, vm: FocusVie
                     Text(when (record.status) { "FED" -> "已喂食 · 亲密度 +1"; "REFUSED" -> "不适合宠物 · 已温柔拒绝"; else -> "等待喂食" }, style = MaterialTheme.typography.bodySmall, color = if (record.status == "READY") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    if (record.status == "READY") Button({ vm.feedPet(record.id) }, enabled = todayFed < 3) { Text("喂给它") }
+                    if (record.status == "READY") Button({ vm.feedPet(record.id) }, enabled = canFeed) { Text("喂给它") }
                     IconButton({ vm.deleteFoodRecord(record.id) }) { Icon(Icons.Default.DeleteOutline, "删除食物记录") }
                 }
             } }
@@ -836,6 +861,35 @@ private fun PetFeedingSection(state: PetState, motion: PetMotionUi, vm: FocusVie
             confirmButton = { TextButton({ previewPhotoPath = null }) { Text("关闭") } }
         )
     }
+}
+
+@Composable
+private fun BoxScope.CottonCandyCelebration(token: Long) {
+    if (token == 0L) return
+    val progress = remember(token) { Animatable(0f) }
+    LaunchedEffect(token) { progress.animateTo(1f, tween(1_700, easing = FastOutSlowInEasing)) }
+    val p = progress.value
+    if (p < 1f) {
+        Canvas(Modifier.matchParentSize().graphicsLayer(alpha = (1f - p).coerceIn(0f, 1f))) {
+            val center = Offset(size.width / 2, size.height / 2)
+            val colors = listOf(Color(0xFFBCE7FF), Color.White, Color(0xFFFFE58C), Color(0xFFD9C6FF))
+            repeat(16) { index ->
+                val angle = index * (2f * PI.toFloat() / 16f)
+                val radius = size.minDimension * (.12f + p * .48f)
+                val point = Offset(center.x + kotlin.math.cos(angle) * radius, center.y + kotlin.math.sin(angle) * radius)
+                drawCircle(colors[index % colors.size], size.minDimension * (.018f + (1f - p) * .025f), point)
+            }
+            drawCircle(Color(0xFFBCE7FF).copy(alpha = .32f), size.minDimension * (.15f + p * .32f), center)
+        }
+        Surface(Modifier.align(Alignment.TopCenter).graphicsLayer(alpha = (1f - p).coerceIn(0f, 1f), translationY = -p * 24f), color = Color.White.copy(alpha = .92f), shape = MaterialTheme.shapes.extraLarge) {
+            Text("☁ 棉花糖时间！", Modifier.padding(horizontal = 12.dp, vertical = 6.dp), color = Color(0xFF4E8FD1), fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+private fun formatFeedingWait(millis: Long): String {
+    val minutes = (millis + 59_999L) / 60_000L
+    return if (minutes >= 60) "${minutes / 60}小时${minutes % 60}分" else "${minutes}分钟"
 }
 
 @Composable

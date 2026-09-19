@@ -128,7 +128,7 @@ class AppRepository(private val context: Context, private val db: AppDatabase = 
 
     suspend fun discardPendingFood(path: String?) = withContext(Dispatchers.IO) { FoodImageStore.delete(path) }
 
-    suspend fun confirmFood(pending: PendingFoodRecognition, selectedKey: String): Long = db.withTransaction {
+    suspend fun confirmFood(pending: PendingFoodRecognition, selectedKey: String): String = db.withTransaction {
         val definition = FoodCatalog.find(selectedKey)
         val unsafe = definition.unsafe
         dao.insertFoodRecord(FoodRecord(
@@ -143,6 +143,17 @@ class AppRepository(private val context: Context, private val db: AppDatabase = 
             aiProvider = pending.result?.provider ?: "MANUAL",
             aiModel = pending.result?.model.orEmpty()
         ))
+        pending.result?.let { result ->
+            val correct = result.key == definition.key
+            dao.insertRecognitionFeedback(FoodRecognitionFeedback(
+                suggestedKey = result.key,
+                confirmedKey = definition.key,
+                wasCorrect = correct,
+                provider = result.provider,
+                model = result.model
+            ))
+            if (correct) "已确认：AI 识别正确，反馈已保存" else "已纠正：AI 认成${result.name}，实际是${definition.name}；反馈已保存"
+        } ?: "已保存${definition.name}，下次可继续拍照识别"
     }
 
     suspend fun feedPet(recordId: Long): String = db.withTransaction {
@@ -151,8 +162,35 @@ class AppRepository(private val context: Context, private val db: AppDatabase = 
         if (record.status == "FED") return@withTransaction "这份食物已经吃过啦"
         val today = Dates.today()
         if (dao.fedCount(today) >= 3) return@withTransaction "今天已经吃得很满足啦，明天再喂我吧"
+        val remaining = feedingCooldownRemaining(dao.lastFedAt())
+        if (remaining > 0) return@withTransaction "刚吃完，要消化${formatFeedingRemaining(remaining)}后才能再吃哦"
         dao.updateFoodRecord(record.copy(status = "FED", fedAt = System.currentTimeMillis(), feedDate = today))
         "吃得好开心！亲密度 +1"
+    }
+
+    suspend fun feedCinnamorollCottonCandy(): String = db.withTransaction {
+        val today = Dates.today()
+        if (dao.fedCount(today) >= 3) return@withTransaction "今天已经吃得很满足啦，明天再喂我吧"
+        val remaining = feedingCooldownRemaining(dao.lastFedAt())
+        if (remaining > 0) return@withTransaction "刚吃完，要消化${formatFeedingRemaining(remaining)}后才能再吃哦"
+        val now = System.currentTimeMillis()
+        val id = dao.insertFoodRecord(FoodRecord(
+            photoPath = null, sourceType = "CINNAMOROLL_TREAT", recognizedKey = "cotton_candy", recognizedName = "棉花糖",
+            status = "READY", aiProvider = "CINNAMOROLL_THEME", capturedAt = now, confirmedAt = now
+        ))
+        dao.updateFoodRecord(FoodRecord(
+            id = id, photoPath = null, sourceType = "CINNAMOROLL_TREAT", recognizedKey = "cotton_candy", recognizedName = "棉花糖",
+            status = "FED", fedAt = now, feedDate = today, aiProvider = "CINNAMOROLL_THEME", capturedAt = now, confirmedAt = now
+        ))
+        "棉花糖好甜呀！亲密度 +1"
+    }
+
+    private fun feedingCooldownRemaining(lastFedAt: Long?): Long =
+        lastFedAt?.let { (2 * 60 * 60 * 1000L - (System.currentTimeMillis() - it)).coerceAtLeast(0) } ?: 0L
+
+    private fun formatFeedingRemaining(millis: Long): String {
+        val minutes = (millis + 59_999) / 60_000
+        return if (minutes >= 60) "${minutes / 60}小时${minutes % 60}分" else "${minutes}分钟"
     }
 
     suspend fun deleteFoodRecord(id: Long) {

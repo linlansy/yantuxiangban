@@ -78,6 +78,8 @@ class FocusViewModel(app: Application) : AndroidViewModel(app) {
     val foodLoading = _foodLoading.asStateFlow()
     private val _foodNotice = MutableStateFlow<String?>(null)
     val foodNotice = _foodNotice.asStateFlow()
+    private val _cottonCandyEffectToken = MutableStateFlow(0L)
+    val cottonCandyEffectToken = _cottonCandyEffectToken.asStateFlow()
     private val _foodAiConfig = MutableStateFlow(repo.foodAiConfig())
     val foodAiConfig = _foodAiConfig.asStateFlow()
     private val _foodAiOverride = MutableStateFlow(repo.hasFoodAiOverride())
@@ -225,11 +227,11 @@ class FocusViewModel(app: Application) : AndroidViewModel(app) {
     }
     fun confirmFood(selectedKey: String) = viewModelScope.launch {
         val pending = _pendingFood.value ?: return@launch
-        repo.confirmFood(pending, selectedKey)
+        val feedback = repo.confirmFood(pending, selectedKey)
         val definition = FoodCatalog.find(selectedKey)
         val unsafe = definition.unsafe
         _pendingFood.value = null
-        _foodNotice.value = if (unsafe) "${definition.name}不适合小狗，它温柔地摇了摇头，照片已收藏" else "${definition.name}已经放进待喂食物"
+        _foodNotice.value = if (unsafe) "${definition.name}不适合小狗，它温柔地摇了摇头，照片已收藏" else "$feedback\n${definition.name}已经放进待喂食物"
         if (unsafe) playPetMotion("action_refuse", PetMotionTiming.REFUSE, priority = 2, caption = "这个不能吃哦")
     }
     fun feedPet(recordId: Long) = viewModelScope.launch {
@@ -243,6 +245,17 @@ class FocusViewModel(app: Application) : AndroidViewModel(app) {
             foodPhotoPath = record?.photoPath,
             foodKey = record?.recognizedKey
         )
+    }
+    fun feedCinnamorollCottonCandy() = viewModelScope.launch {
+        if (adminState.value.activeTheme != ThemeCatalog.CINNAMOROLL) {
+            _foodNotice.value = "只有大耳狗主题可以送出这份棉花糖"; return@launch
+        }
+        val result = repo.feedCinnamorollCottonCandy()
+        _foodNotice.value = result
+        if (result.startsWith("棉花糖")) {
+            _cottonCandyEffectToken.value = SystemClock.elapsedRealtime()
+            playPetMotion("action_eat", PetMotionTiming.EAT, priority = 3, caption = "甜甜的，谢谢你！", foodKey = "cotton_candy")
+        }
     }
     fun deleteFoodRecord(id: Long) = viewModelScope.launch { repo.deleteFoodRecord(id); _foodNotice.value = "食物记录已删除" }
     fun clearFoodNotice() { _foodNotice.value = null }

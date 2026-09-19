@@ -59,7 +59,7 @@ object FoodCatalog {
         FoodDefinition("cookie", "饼干"),
         FoodDefinition("donut", "甜甜圈"), FoodDefinition("pudding", "布丁"), FoodDefinition("jelly", "果冻"),
         FoodDefinition("ice_cream", "冰淇淋"), FoodDefinition("chips", "薯条"), FoodDefinition("popcorn", "爆米花"),
-        FoodDefinition("milk", "牛奶"), FoodDefinition("yogurt", "酸奶"), FoodDefinition("milk_tea", "奶茶"),
+        FoodDefinition("cotton_candy", "棉花糖"), FoodDefinition("milk", "牛奶"), FoodDefinition("yogurt", "酸奶"), FoodDefinition("milk_tea", "奶茶"),
         FoodDefinition("juice", "果汁"), FoodDefinition("coffee", "咖啡"), FoodDefinition("tea", "茶"), FoodDefinition("soda", "汽水")
     )
 

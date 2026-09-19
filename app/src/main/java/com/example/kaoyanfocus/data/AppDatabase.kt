@@ -217,6 +217,18 @@ data class FoodRecognitionAttempt(
     val model: String = ""
 )
 
+/** Local-only feedback: it records whether the chosen food matched the AI suggestion. */
+@Entity(tableName = "food_recognition_feedback", indices = [Index("createdAt"), Index("suggestedKey")])
+data class FoodRecognitionFeedback(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val createdAt: Long = System.currentTimeMillis(),
+    val suggestedKey: String,
+    val confirmedKey: String,
+    val wasCorrect: Boolean,
+    val provider: String = "",
+    val model: String = ""
+)
+
 @Entity(tableName = "audit_log")
 data class AuditEntry(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -270,6 +282,7 @@ interface AppDao {
     @Query("SELECT * FROM food_records WHERE id = :id LIMIT 1") suspend fun foodRecord(id: Long): FoodRecord?
     @Query("SELECT COUNT(*) FROM food_records WHERE status = 'FED'") fun affection(): Flow<Int>
     @Query("SELECT COUNT(*) FROM food_records WHERE status = 'FED' AND feedDate = :date") suspend fun fedCount(date: String): Int
+    @Query("SELECT MAX(fedAt) FROM food_records WHERE status = 'FED'") suspend fun lastFedAt(): Long?
     @Query("SELECT COUNT(*) FROM food_recognition_attempts WHERE requestDate = :date") fun recognitionCount(date: String): Flow<Int>
     @Query("SELECT COUNT(*) FROM food_recognition_attempts WHERE requestDate = :date") suspend fun recognitionCountSnapshot(date: String): Int
 
@@ -293,6 +306,7 @@ interface AppDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun insertNightProgress(item: NightStudyProgress)
     @Insert suspend fun insertFoodRecord(item: FoodRecord): Long
     @Insert suspend fun insertRecognitionAttempt(item: FoodRecognitionAttempt): Long
+    @Insert suspend fun insertRecognitionFeedback(item: FoodRecognitionFeedback): Long
     @Insert suspend fun insertAudit(item: AuditEntry)
     @Update suspend fun updateProduct(item: Product)
     @Update suspend fun updateCategory(item: StudyCategory)
@@ -335,8 +349,8 @@ interface AppDao {
         Product::class, Redemption::class, TaskTemplate::class, DailyTask::class, RewardCode::class,
         AchievementDefinition::class, AchievementUnlock::class, DailyReflection::class, RestDay::class, AuditEntry::class,
         PetProfile::class, PetUnlock::class, PetLetter::class, NightStudyProgress::class,
-        FoodRecord::class, FoodRecognitionAttempt::class],
-    version = 7, exportSchema = true
+        FoodRecord::class, FoodRecognitionAttempt::class, FoodRecognitionFeedback::class],
+    version = 8, exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun dao(): AppDao
@@ -443,9 +457,16 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_food_recognition_attempts_requestDate ON food_recognition_attempts(requestDate)")
             }
         }
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS food_recognition_feedback (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, createdAt INTEGER NOT NULL, suggestedKey TEXT NOT NULL, confirmedKey TEXT NOT NULL, wasCorrect INTEGER NOT NULL, provider TEXT NOT NULL, model TEXT NOT NULL)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_food_recognition_feedback_createdAt ON food_recognition_feedback(createdAt)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_food_recognition_feedback_suggestedKey ON food_recognition_feedback(suggestedKey)")
+            }
+        }
         fun create(context: Context): AppDatabase = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, "focus.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7).build().also { instance = it }
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8).build().also { instance = it }
         }
         fun closeInstance() { instance?.close(); instance = null }
     }

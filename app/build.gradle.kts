@@ -26,8 +26,8 @@ android { namespace = "com.example.kaoyanfocus"; compileSdk = 35
         applicationId = "com.example.kaoyanfocus"
         minSdk = 26
         targetSdk = 35
-        versionCode = 27
-        versionName = "2.8.9"
+        versionCode = 28
+        versionName = "2.8.10"
         buildConfigField("String", "QWEN_API_KEY", "\"${configStringAny("QWEN_API_KEY", "DASHSCOPE_API_KEY")}\"")
         buildConfigField("String", "QWEN_BASE_URL", "\"${configString("QWEN_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1")}\"")
         buildConfigField("String", "QWEN_MODEL", "\"${configString("QWEN_MODEL", "qwen3-vl-flash")}\"")
