@@ -734,6 +734,7 @@ private fun PetFeedingSection(state: PetState, motion: PetMotionUi, vm: FocusVie
     val waitMillis = (2 * 60 * 60 * 1000L - (System.currentTimeMillis() - lastFedAt)).coerceAtLeast(0L)
     val canFeed = todayFed < 3 && waitMillis == 0L
 
+    Box(Modifier.fillMaxSize()) {
     LazyColumn(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
             ElevatedCard(Modifier.fillMaxWidth()) {
@@ -742,7 +743,6 @@ private fun PetFeedingSection(state: PetState, motion: PetMotionUi, vm: FocusVie
                         state.profile?.let { profile ->
                             PolishedPetFurniture(profile)
                             AnimatedPet(profile, state.unlocks, motion, false, Modifier.fillMaxSize(), vm::petTapped)
-                            CottonCandyCelebration(cottonCandyToken)
                         }
                     }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
@@ -832,6 +832,8 @@ private fun PetFeedingSection(state: PetState, motion: PetMotionUi, vm: FocusVie
                 }
             } }
         }
+    }
+    CottonCandyCelebration(cottonCandyToken)
     }
 
     if (showCatalog) AlertDialog(
