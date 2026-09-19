@@ -282,6 +282,7 @@ interface AppDao {
     @Query("SELECT * FROM food_records WHERE id = :id LIMIT 1") suspend fun foodRecord(id: Long): FoodRecord?
     @Query("SELECT COUNT(*) FROM food_records WHERE status = 'FED'") fun affection(): Flow<Int>
     @Query("SELECT COUNT(*) FROM food_records WHERE status = 'FED' AND feedDate = :date") suspend fun fedCount(date: String): Int
+    @Query("SELECT COUNT(*) FROM food_records WHERE status = 'FED' AND feedDate = :date AND sourceType = 'CINNAMOROLL_TREAT'") suspend fun cinnamorollTreatCount(date: String): Int
     @Query("SELECT MAX(fedAt) FROM food_records WHERE status = 'FED'") suspend fun lastFedAt(): Long?
     @Query("SELECT COUNT(*) FROM food_recognition_attempts WHERE requestDate = :date") fun recognitionCount(date: String): Flow<Int>
     @Query("SELECT COUNT(*) FROM food_recognition_attempts WHERE requestDate = :date") suspend fun recognitionCountSnapshot(date: String): Int

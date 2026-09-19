@@ -170,6 +170,7 @@ class AppRepository(private val context: Context, private val db: AppDatabase = 
 
     suspend fun feedCinnamorollCottonCandy(): String = db.withTransaction {
         val today = Dates.today()
+        if (dao.cinnamorollTreatCount(today) >= 1) return@withTransaction "今天的云朵棉花糖已经送过啦，明天再给它一份惊喜吧"
         if (dao.fedCount(today) >= 3) return@withTransaction "今天已经吃得很满足啦，明天再喂我吧"
         val remaining = feedingCooldownRemaining(dao.lastFedAt())
         if (remaining > 0) return@withTransaction "刚吃完，要消化${formatFeedingRemaining(remaining)}后才能再吃哦"

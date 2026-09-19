@@ -71,7 +71,7 @@ object PetMotionTiming {
     const val CELEBRATE = 3_600L
     const val DRINK = 4_200L
     const val LIE = 5_000L
-    const val EAT = 2_000L
+      const val EAT = 3_200L
     const val REFUSE = 2_000L
 
     fun forAction(action: String): Long = when (action) {
@@ -157,7 +157,7 @@ fun AnimatedPet(
                 "action_celebrate" -> { translationY = -abs(phase) * 24f; rotationZ = phase * 5f }
                 "action_drink" -> rotationZ = phase * 7f
                 "action_lie" -> { translationY = abs(phase) * 12f; rotationZ = 68f + phase * 4f; scaleX = .82f; scaleY = .82f }
-                "action_eat" -> { translationY = abs(phase) * 9f; scaleY = 1f - abs(phase) * .025f }
+                  "action_eat" -> { translationY = -abs(phase) * 7f; scaleY = 1f - abs(phase) * .035f; scaleX = 1f + abs(phase) * .018f }
                 "action_refuse" -> rotationZ = phase * 5f
                 else -> { scaleX = 1f + phase * .018f; scaleY = 1f + phase * .018f }
             }
@@ -182,20 +182,56 @@ fun AnimatedPet(
 
         if (proceduralMotion) PetActionPropOverlay(action, progress)
 
-        if (action == "action_eat") {
+          if (action == "action_eat") {
             val foodBitmap = remember(motion.foodKey, motion.foodPhotoPath) {
                 foodArtworkResource(motion.foodKey)?.let { BitmapFactory.decodeResource(context.resources, it)?.asImageBitmap() }
                     ?: motion.foodPhotoPath?.takeIf { File(it).exists() }?.let { BitmapFactory.decodeFile(it)?.asImageBitmap() }
-            }
-            Canvas(Modifier.fillMaxSize()) {
-                val bowlCenter = Offset(size.width * .5f, size.height * .80f)
-                val radius = size.minDimension * .10f
-                drawOval(Color(0xFF8CC9F2), topLeft = Offset(bowlCenter.x - radius * 1.25f, bowlCenter.y - radius * .25f), size = Size(radius * 2.5f, radius * .82f))
-                drawOval(Color(0xFFE7F6FF), topLeft = Offset(bowlCenter.x - radius, bowlCenter.y - radius * .42f), size = Size(radius * 2f, radius * .58f))
-                if (foodBitmap != null) drawImage(foodBitmap, dstOffset = IntOffset((bowlCenter.x - radius * .55f).toInt(), (bowlCenter.y - radius * .62f).toInt()), dstSize = IntSize((radius * 1.1f).toInt(), (radius * .72f).toInt()))
-                else drawCircle(Color(0xFFF2B66D), radius * .38f, Offset(bowlCenter.x, bowlCenter.y - radius * .30f))
-            }
-        }
+              }
+              Canvas(Modifier.fillMaxSize()) {
+                  // A single feed has three readable beats: lift the food, happy chewing,
+                  // then a small heart-and-sparkle finish. This works for every outfit.
+                  val lift = (progress / .30f).coerceIn(0f, 1f).let { it * it * (3f - 2f * it) }
+                  val chewing = ((progress - .30f) / .45f).coerceIn(0f, 1f)
+                  val finish = ((progress - .72f) / .28f).coerceIn(0f, 1f)
+                  val bowlCenter = Offset(size.width * .5f, size.height * .80f)
+                  val radius = size.minDimension * .10f
+                  drawOval(Color(0xFF5B9BD5).copy(alpha = .32f), topLeft = Offset(bowlCenter.x - radius * 1.32f, bowlCenter.y - radius * .18f), size = Size(radius * 2.64f, radius * .88f))
+                  drawOval(Color(0xFF9BD7FA), topLeft = Offset(bowlCenter.x - radius * 1.25f, bowlCenter.y - radius * .30f), size = Size(radius * 2.5f, radius * .82f))
+                  drawOval(Color(0xFFF5FCFF), topLeft = Offset(bowlCenter.x - radius, bowlCenter.y - radius * .48f), size = Size(radius * 2f, radius * .62f))
+                  val foodCenter = Offset(
+                      bowlCenter.x + size.width * .11f * lift,
+                      bowlCenter.y - radius * .34f - (bowlCenter.y - size.height * .49f) * lift - abs(sin(chewing * 5f * PI.toFloat())) * radius * .09f
+                  )
+                  val foodScale = (1f - finish * .82f).coerceAtLeast(.16f)
+                  val foodWidth = radius * 1.20f * foodScale
+                  val foodHeight = radius * .90f * foodScale
+                  if (foodBitmap != null) drawImage(
+                      foodBitmap,
+                      dstOffset = IntOffset((foodCenter.x - foodWidth / 2).toInt(), (foodCenter.y - foodHeight / 2).toInt()),
+                      dstSize = IntSize(foodWidth.toInt(), foodHeight.toInt()),
+                      alpha = (1f - finish * .72f).coerceIn(0f, 1f)
+                  ) else drawCircle(Color(0xFFF2B66D), radius * .39f * foodScale, foodCenter, alpha = (1f - finish * .72f).coerceIn(0f, 1f))
+
+                  if (chewing > 0f && finish < .75f) {
+                      val blushAlpha = (sin(chewing * PI.toFloat()).coerceAtLeast(0f) * .42f)
+                      drawCircle(Color(0xFFFF9DB4).copy(alpha = blushAlpha), radius * .17f, Offset(size.width * .37f, size.height * .53f))
+                      drawCircle(Color(0xFFFF9DB4).copy(alpha = blushAlpha), radius * .17f, Offset(size.width * .63f, size.height * .53f))
+                      repeat(4) { i ->
+                          val angle = i * (PI.toFloat() / 2f) + chewing * .9f
+                          val crumb = Offset(size.width * .5f + kotlin.math.cos(angle) * radius * .72f, size.height * .50f + kotlin.math.sin(angle) * radius * .36f)
+                          drawCircle(Color(0xFFFFDB79).copy(alpha = .78f), radius * .065f, crumb)
+                      }
+                  }
+                  if (finish > 0f) {
+                      repeat(5) { i ->
+                          val x = size.width * (.27f + i * .115f)
+                          val y = size.height * (.47f - finish * (.20f + (i % 2) * .06f))
+                          val glow = radius * (.08f + finish * .10f)
+                          drawCircle(if (i % 2 == 0) Color(0xFFFF89AA) else Color(0xFFFFD66B), glow, Offset(x, y), alpha = (1f - finish).coerceIn(.12f, 1f))
+                      }
+                  }
+              }
+          }
 
         AnimatedVisibility(
             visible = motion.caption != null,
