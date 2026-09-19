@@ -1,9 +1,12 @@
 package com.example.kaoyanfocus
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -13,6 +16,9 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
 import com.example.kaoyanfocus.data.PetProfile
 
 /** Scalable, theme-aware room decorations drawn behind the pet. */
@@ -35,21 +41,18 @@ fun BoxScope.PolishedPetFurniture(profile: PetProfile?) {
         if ("furniture_plant" in placed) drawPlant(Offset(size.width * .87f, size.height * .78f), size.width * .16f, primary, secondary)
         if ("furniture_star_globe" in placed) drawStarGlobe(Offset(size.width * .86f, size.height * .54f), size.width * .19f, primary, secondary, surface)
         if ("furniture_target_board" in placed) drawTargetBoard(Offset(size.width * .14f, size.height * .57f), size.width * .19f, primary, secondary, surface)
-        if ("furniture_cloud_cushion" in placed) drawCloudCushion(Offset(size.width * .50f, size.height * .82f), size.width * .31f, primary, surface)
         if ("furniture_goal_trophy" in placed) drawGoalTrophy(Offset(size.width * .73f, size.height * .80f), size.width * .13f, primary, secondary)
     }
-}
-
-private fun DrawScope.drawCloudCushion(center: Offset, width: Float, primary: Color, surface: Color) {
-    val cloud = Color(0xFFDCEEFF)
-    val shade = Color(0xFF9FC8E8)
-    drawOval(primary.copy(alpha = .10f), Offset(center.x - width * .55f, center.y + width * .12f), Size(width * 1.10f, width * .18f))
-    drawRoundRect(shade.copy(alpha = .72f), Offset(center.x - width * .46f, center.y - width * .05f), Size(width * .92f, width * .28f), CornerRadius(width * .14f))
-    drawCircle(cloud, width * .22f, Offset(center.x - width * .25f, center.y - width * .05f))
-    drawCircle(cloud, width * .28f, Offset(center.x, center.y - width * .13f))
-    drawCircle(cloud, width * .21f, Offset(center.x + width * .27f, center.y - width * .04f))
-    drawRoundRect(cloud, Offset(center.x - width * .43f, center.y - width * .07f), Size(width * .86f, width * .25f), CornerRadius(width * .12f))
-    drawArc(surface.copy(alpha = .82f), 205f, 42f, false, Offset(center.x - width * .28f, center.y - width * .08f), Size(width * .56f, width * .24f), style = Stroke(width * .018f))
+    // Keep this as a real transparent asset rather than a canvas approximation: it is
+    // shared by the room and the Cinnamoroll-theme focus page.
+    if ("furniture_cloud_cushion" in placed) {
+        Image(
+            painter = painterResource(R.drawable.furniture_cloud_cushion),
+            contentDescription = "云朵坐垫",
+            modifier = Modifier.align(Alignment.BottomCenter).size(154.dp),
+            contentScale = ContentScale.Fit
+        )
+    }
 }
 
 private fun DrawScope.drawGoalTrophy(center: Offset, width: Float, primary: Color, secondary: Color) {

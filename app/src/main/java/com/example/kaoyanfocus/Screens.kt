@@ -111,6 +111,16 @@ fun FocusScreen(vm: FocusViewModel, activeTheme: String) {
             }
             val focusPet = petState.profile?.takeIf { petState.named && it.showOnFocus }
             if (focusPet != null || character != null) Box(Modifier.fillMaxWidth().height(characterHeight), contentAlignment = Alignment.Center) {
+                // Theme-only decoration: it is visible on the focus home page even before
+                // the separately collectible room furniture has been unlocked.
+                if (activeTheme == ThemeCatalog.CINNAMOROLL) {
+                    Image(
+                        painter = painterResource(R.drawable.furniture_cloud_cushion),
+                        contentDescription = "云朵坐垫",
+                        modifier = Modifier.align(Alignment.BottomCenter).size(if (compact) 112.dp else 132.dp),
+                        contentScale = ContentScale.Fit
+                    )
+                }
                 if (focusPet != null) AnimatedPet(focusPet, petState.unlocks, petMotion, timer.running, Modifier.fillMaxSize(), vm::petTapped)
                 else Image(painterResource(character!!), null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
                 if (activeTheme == ThemeCatalog.CINNAMOROLL) Surface(
