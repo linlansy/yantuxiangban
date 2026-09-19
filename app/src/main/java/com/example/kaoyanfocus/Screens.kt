@@ -766,7 +766,8 @@ private fun PetFeedingSection(state: PetState, motion: PetMotionUi, vm: FocusVie
         if (activeTheme == ThemeCatalog.CINNAMOROLL) item {
             ElevatedCard(Modifier.fillMaxWidth(), colors = CardDefaults.elevatedCardColors(containerColor = Color(0xFFEAF6FF))) {
                 Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    FoodArtwork(foodArtworkResource("cotton_candy")!!, Modifier.size(58.dp))
+                    foodArtworkResource("cotton_candy")?.let { FoodArtwork(it, Modifier.size(58.dp)) }
+                        ?: Icon(Icons.Default.Star, "棉花糖", Modifier.size(48.dp), tint = Color(0xFF7CC7F2))
                     Column(Modifier.weight(1f)) {
                         Text("大耳狗的云朵棉花糖", fontWeight = FontWeight.Bold, color = Color(0xFF356FA8))
                         Text("主题限定 · 喂食后会出现甜甜的特效", style = MaterialTheme.typography.bodySmall, color = Color(0xFF5D86B4))

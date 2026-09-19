@@ -4,6 +4,8 @@
 /build/
 /app/build/
 /APK/
+/*.apk
+/*.idsig
 /dist/
 /tmp/
 /local.properties
