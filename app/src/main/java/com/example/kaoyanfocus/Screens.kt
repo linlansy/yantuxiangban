@@ -73,6 +73,7 @@ fun FocusScreen(vm: FocusViewModel, activeTheme: String) {
     var newCategoryName by remember { mutableStateOf("") }
     var finishResult by remember { mutableStateOf<String?>(null) }
     var cinnamorollCardIndex by remember { mutableIntStateOf((LocalDate.now().toEpochDay() % CinnamorollCloudNotes.size).toInt()) }
+    var showCinnamorollNote by remember { mutableStateOf(false) }
     LaunchedEffect(timer.active, timer.categoryName, timer.note) { if (timer.active) { category = timer.categoryName; note = timer.note } }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val compact = maxHeight < 700.dp
@@ -124,22 +125,24 @@ fun FocusScreen(vm: FocusViewModel, activeTheme: String) {
                 if (focusPet != null) AnimatedPet(focusPet, petState.unlocks, petMotion, timer.running, Modifier.fillMaxSize(), vm::petTapped)
                 else Image(painterResource(character!!), null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
                 if (activeTheme == ThemeCatalog.CINNAMOROLL) Surface(
-                    Modifier.align(Alignment.BottomStart).padding(start = 4.dp, bottom = 2.dp).clickable {
-                        cinnamorollCardIndex = (cinnamorollCardIndex + 1) % CinnamorollCloudNotes.size
-                    },
-                    shape = MaterialTheme.shapes.medium,
-                    color = Color.White.copy(alpha = .88f),
-                    shadowElevation = 2.dp
+                    Modifier.align(Alignment.BottomEnd).padding(end = 4.dp, bottom = 3.dp).size(48.dp).clickable { showCinnamorollNote = true },
+                    shape = MaterialTheme.shapes.extraLarge,
+                    color = Color.White.copy(alpha = .90f),
+                    shadowElevation = 3.dp
                 ) {
-                    Column(Modifier.padding(horizontal = 10.dp, vertical = 7.dp)) {
-                        Text("☁ 云朵加油站 · 点我换一句", color = Color(0xFF4E8FD1), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                        Text(CinnamorollCloudNotes[cinnamorollCardIndex], color = Color(0xFF356FA8), style = MaterialTheme.typography.bodySmall, maxLines = 1)
-                    }
+                    Box(contentAlignment = Alignment.Center) { Text("☁", fontSize = 29.sp, color = Color(0xFF65A9E4)) }
                 }
             }
             else Box(Modifier.fillMaxWidth().height(if (compact) 54.dp else 72.dp), contentAlignment = Alignment.Center) {
                 Icon(Icons.Default.AutoStories, null, Modifier.size(if (compact) 46.dp else 60.dp), tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.75f))
             }
+            if (showCinnamorollNote) AlertDialog(
+                onDismissRequest = { showCinnamorollNote = false },
+                title = { Text("☁ 云朵加油站", color = Color(0xFF4E8FD1), fontWeight = FontWeight.Bold) },
+                text = { Text(CinnamorollCloudNotes[cinnamorollCardIndex], color = Color(0xFF356FA8), style = MaterialTheme.typography.bodyLarge) },
+                dismissButton = { TextButton({ showCinnamorollNote = false }) { Text("收好") } },
+                confirmButton = { TextButton({ cinnamorollCardIndex = (cinnamorollCardIndex + 1) % CinnamorollCloudNotes.size }) { Text("换一句") } }
+            )
             ElevatedCard(Modifier.fillMaxWidth().then(if (isStarry) Modifier.border(1.5.dp, starryGold, MaterialTheme.shapes.medium) else Modifier)) {
                 Column(Modifier.fillMaxWidth().padding(vertical = if (compact) 14.dp else 18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(formatDuration(timer.elapsedSeconds), style = if (compact) MaterialTheme.typography.displayMedium else MaterialTheme.typography.displayLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
